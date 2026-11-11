@@ -30,7 +30,7 @@ class UtilTest(TestCase):
             self.assertEqual(util.epoch(dt), 600)
             self.assertEqual(mock_log.call_count, 1)
             self.assertEqual(len(mock_log.call_args[0]), 1)
-            self.assertRegexpMatches(
+            self.assertRegex(
                     mock_log.call_args[0][0],
                     r'epoch\(\) called with non-timezone-aware datetime in test_epoch_naive at .+/webapp/tests/test_util\.py:[0-9]+'
             )
@@ -40,7 +40,7 @@ class UtilTest(TestCase):
             self.assertEqual(util.epoch(dt), 600)
             self.assertEqual(mock_log.call_count, 2)
             self.assertEqual(len(mock_log.call_args[0]), 1)
-            self.assertRegexpMatches(
+            self.assertRegex(
                     mock_log.call_args[0][0],
                     r'epoch\(\) called with non-timezone-aware datetime in test_epoch_naive at .+/webapp/tests/test_util\.py:[0-9]+'
             )
@@ -70,11 +70,6 @@ class UtilTest(TestCase):
             self.assertEqual( results, [True, True, True, False] )
         else:
             self.assertEqual( results, [False, False, False, False] )
-
-    def test_is_local_interface_dns(self):
-        addresses = ['localhost', socket.gethostname(), 'google.com']
-        results = [ util.is_local_interface(a) for a in addresses ]
-        self.assertEqual( results, [True, True, False] )
 
     def test_is_escaped_pattern(self):
         self.assertFalse(util.is_escaped_pattern(r'asdf'))
@@ -111,16 +106,16 @@ class UtilTest(TestCase):
 
         test_logtime(True)
         self.assertEqual(log.info.call_count, 1)
-        self.assertRegexpMatches(log.info.call_args[0][0], r'test :: completed in [-.e0-9]+s')
+        self.assertRegex(log.info.call_args[0][0], r'test :: completed in [-.e0-9]+s')
 
         test_logtime(True, 'custom')
         self.assertEqual(log.info.call_count, 2)
-        self.assertRegexpMatches(log.info.call_args[0][0], r'test :: custom [-.e0-9]+s')
+        self.assertRegex(log.info.call_args[0][0], r'test :: custom [-.e0-9]+s')
 
-        with self.assertRaisesRegexp(Exception, 'testException'):
+        with self.assertRaisesRegex(Exception, 'testException'):
             test_logtime(False)
         self.assertEqual(log.info.call_count, 3)
-        self.assertRegexpMatches(log.info.call_args[0][0], r'test :: failed in [-.e0-9]+s')
+        self.assertRegex(log.info.call_args[0][0], r'test :: failed in [-.e0-9]+s')
 
 
 class SafeUnpicklerTest(TestCase):

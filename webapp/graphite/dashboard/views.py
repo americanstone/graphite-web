@@ -1,4 +1,5 @@
 import re
+import os
 import errno
 
 from os.path import getmtime
@@ -16,6 +17,7 @@ from graphite.dashboard.send_graph import send_graph_email
 from graphite.render.views import renderView
 from graphite.util import json
 from graphite.user_util import isAuthenticated
+from graphite.errors import handleInputParameterError, str_param
 
 fieldRegex = re.compile(r'<([^>]+)>')
 defaultScheme = {
@@ -108,7 +110,9 @@ class DashboardConfig:
 config = DashboardConfig()
 
 
+@handleInputParameterError
 def dashboard(request, name=None):
+  name = str_param('name', name)
   dashboard_conf_missing = False
 
   try:
@@ -123,6 +127,10 @@ def dashboard(request, name=None):
   debug = request.GET.get('debug', False)
   theme = request.GET.get('theme', config.ui_config['theme'])
   css_file = finders.find('css/dashboard-%s.css' % theme)
+  if css_file is None:
+    # Also search in STATIC_ROOT for dist packages
+    css_file = os.path.isfile(os.path.join(settings.STATIC_ROOT,
+                                           'css/dashboard-%s.css' % theme))
   if css_file is None:
     initialError = "Invalid theme '%s'" % theme
     theme = config.ui_config['theme']
@@ -155,7 +163,9 @@ def dashboard(request, name=None):
   return render(request, "dashboard.html", context)
 
 
+@handleInputParameterError
 def template(request, name, val):
+  name = str_param('name', name)
   template_conf_missing = False
 
   try:
@@ -221,7 +231,10 @@ def getPermissions(user):
   return permissions
 
 
+@handleInputParameterError
 def save(request, name):
+  name = str_param('name', name)
+
   if 'change' not in getPermissions(request.user):
     return json_response( dict(error="Must be logged in with appropriate permissions to save") )
   # Deserialize and reserialize as a validation step
@@ -238,7 +251,11 @@ def save(request, name):
   return json_response( dict(success=True) )
 
 
+@handleInputParameterError
 def save_template(request, name, key):
+  name = str_param('name', name)
+  key = str_param('key', key)
+
   if 'change' not in getPermissions(request.user):
     return json_response( dict(error="Must be logged in with appropriate permissions to save the template") )
   # Deserialize and reserialize as a validation step
@@ -257,7 +274,9 @@ def save_template(request, name, key):
   return json_response( dict(success=True) )
 
 
+@handleInputParameterError
 def load(request, name):
+  name = str_param('name', name)
   try:
     dashboard = Dashboard.objects.get(name=name)
   except Dashboard.DoesNotExist:
@@ -266,7 +285,9 @@ def load(request, name):
   return json_response( dict(state=json.loads(dashboard.state)) )
 
 
+@handleInputParameterError
 def load_template(request, name, val):
+  name = str_param('name', name)
   try:
     template = Template.objects.get(name=name)
   except Template.DoesNotExist:
@@ -277,7 +298,9 @@ def load_template(request, name, val):
   return json_response( dict(state=state) )
 
 
+@handleInputParameterError
 def delete(request, name):
+  name = str_param('name', name)
   if 'delete' not in getPermissions(request.user):
     return json_response( dict(error="Must be logged in with appropriate permissions to delete") )
 
@@ -290,7 +313,9 @@ def delete(request, name):
     return json_response( dict(success=True) )
 
 
+@handleInputParameterError
 def delete_template(request, name):
+  name = str_param('name', name)
   if 'delete' not in getPermissions(request.user):
     return json_response( dict(error="Must be logged in with appropriate permissions to delete the template") )
 

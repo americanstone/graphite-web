@@ -16,9 +16,9 @@ from django.conf import settings
 try:
     from django.urls import reverse
 except ImportError:  # Django < 1.10
-    from django.core.urlresolvers import reverse
+    from django.urls import reverse
 
-from graphite.errors import NormalizeEmptyResultError
+from graphite.errors import NormalizeEmptyResultError, InputParameterError
 from graphite.functions import _SeriesFunctions, loadFunctions, safe
 from graphite.render.datalib import TimeSeries
 from graphite.render import functions
@@ -467,7 +467,7 @@ class FunctionsTest(TestCase):
     #
     def test_matchSeries_assert(self):
         seriesList = self._generate_series_list()
-        with self.assertRaisesRegexp(AssertionError, 'The number of series in each argument must be the same'):
+        with self.assertRaisesRegex(AssertionError, 'The number of series in each argument must be the same'):
             functions.matchSeries(seriesList[0], [])
 
     def test_matchSeries_empty(self):
@@ -682,7 +682,7 @@ class FunctionsTest(TestCase):
         self.assertEqual(result, expectedList)
 
     def test_aggregate_invalidFunc(self):
-        with self.assertRaisesRegexp(Exception, "Unsupported aggregation function: blahSeries"):
+        with self.assertRaisesRegex(Exception, "Unsupported aggregation function: blahSeries"):
             functions.aggregate({}, [], 'blahSeries')
 
     def test_aggregate_emptySeries(self):
@@ -730,7 +730,7 @@ class FunctionsTest(TestCase):
         self.assertEqual(result, expectedList)
 
     def test_percentileOfSeries_0th_percentile(self):
-        with self.assertRaisesRegexp(ValueError, 'The requested percent is required to be greater than 0'):
+        with self.assertRaisesRegex(ValueError, 'The requested percent is required to be greater than 0'):
             functions.percentileOfSeries({}, [], 0)
 
     def test_percentileOfSeries_empty_series(self):
@@ -960,7 +960,7 @@ class FunctionsTest(TestCase):
             ]
         )
 
-        with self.assertRaisesRegexp(ValueError, "asPercent second argument must be missing, a single digit, reference exactly 1 series or reference the same number of series as the first argument"):
+        with self.assertRaisesRegex(ValueError, "asPercent second argument must be missing, a single digit, reference exactly 1 series or reference the same number of series as the first argument"):
             functions.asPercent({}, seriesList, seriesList2)
 
     def test_asPercent_no_seriesList2(self):
@@ -1312,7 +1312,7 @@ class FunctionsTest(TestCase):
         )
 
         message = r"divideSeries second argument must reference exactly 1 series \(got 2\)"
-        with self.assertRaisesRegexp(ValueError, message):
+        with self.assertRaisesRegex(ValueError, message):
             functions.divideSeries({}, seriesList, seriesList2)
 
     def test_divideSeries_seriesList2_single(self):
@@ -1796,6 +1796,10 @@ class FunctionsTest(TestCase):
 
         # verify against scaleToSeconds(nonNegativeDerivative(<series>, <maxValue>), 1)
         result = functions.scaleToSeconds({}, functions.nonNegativeDerivative({}, seriesList), 1)
+        self.assertEqual(list(expected[0]), list(result[0]))
+
+        # None values should not raise TypeError when maxValue is set
+        result = functions.perSecond({}, seriesList, maxValue=1000)
         self.assertEqual(list(expected[0]), list(result[0]))
 
     def test_perSecond_max(self):
@@ -2725,7 +2729,7 @@ class FunctionsTest(TestCase):
             tzinfo=pytz.utc
         )
         message = r"verticalLine\(\): timestamp 3600 exists before start of range"
-        with self.assertRaisesRegexp(ValueError, message):
+        with self.assertRaisesRegex(ValueError, message):
             _ = functions.verticalLine(requestContext, "01:0019700101", "foo")
 
     def test_vertical_line_after_end(self):
@@ -2735,7 +2739,7 @@ class FunctionsTest(TestCase):
             tzinfo=pytz.utc
         )
         message = r"verticalLine\(\): timestamp 31539600 exists after end of range"
-        with self.assertRaisesRegexp(ValueError, message):
+        with self.assertRaisesRegex(ValueError, message):
             _ = functions.verticalLine(requestContext, "01:0019710101", "foo")
 
     def test_line_width(self):
@@ -2780,7 +2784,7 @@ class FunctionsTest(TestCase):
                 continue
             # If the None values weren't transformed, there is a problem
             self.assertNotIn(None, results[counter],
-                             "tranformNull should remove all None values")
+                             "transformNull should remove all None values")
             # Anywhere a None was in the original series, verify it
             # was transformed to the given value it should be.
             for i, value in enumerate(series):
@@ -2828,7 +2832,7 @@ class FunctionsTest(TestCase):
                 continue
             # If the None values weren't transformed, there is a problem
             self.assertNotIn(None, results[counter],
-                             "tranformNull should remove all None values")
+                             "transformNull should remove all None values")
             # Anywhere a None was in the original series, verify it
             # was transformed to the given value if a value existed
             for i, value in enumerate(series):
@@ -3025,7 +3029,7 @@ class FunctionsTest(TestCase):
         with self.assertRaises(IndexError):
             verify_node_name(seriesList, None, 10000)
 
-        # Additiona tests
+        # Additional tests
         seriesList = []
         names = [
             "collectd.test-db1.load.value",
@@ -3113,7 +3117,7 @@ class FunctionsTest(TestCase):
         ]
         verify_groupByNode(expectedResult, 1, seriesList)
 
-        # Additiona tests
+        # Additional tests
         seriesList = []
         names = [
             "collectd.test-db1.load.value",
@@ -3823,7 +3827,7 @@ class FunctionsTest(TestCase):
             ]
         )
 
-        with self.assertRaisesRegexp(ValueError, '^Invalid parameters \\(Unsupported aggregation function: bad\\)$'):
+        with self.assertRaisesRegex(ValueError, '^Invalid parameters \\(Unsupported aggregation function: bad\\)$'):
             functions.aggregateLine(
                 self._build_requestContext(
                     startTime=datetime(1970,1,1,1,0,0,0,pytz.timezone(settings.TIME_ZONE)),
@@ -4318,6 +4322,134 @@ class FunctionsTest(TestCase):
         result = functions.legendValue({}, seriesList, "avg", "bogus")
         self.assertEqual(result, expectedResult)
 
+    def test_upper_without_positions(self):
+        seriesList = self._gen_series_list_with_data(
+            key=['', 'a', 'normal.metric.name.with.normal.length', '!@#$%^&*()_+'],
+            start=0,
+            end=4,
+            data=[[], [], [], []],
+        )
+        expectedResult = [
+            TimeSeries('', 0, 4, 1, []),
+            TimeSeries('A', 0, 4, 1, []),
+            TimeSeries('NORMAL.METRIC.NAME.WITH.NORMAL.LENGTH', 0, 4, 1, []),
+            TimeSeries('!@#$%^&*()_+', 0, 4, 1, []),
+        ]
+        result = functions.toUpperCase({}, seriesList)
+        self.assertEqual(result, expectedResult)
+
+    def test_upper_with_one_position(self):
+        seriesList = self._gen_series_list_with_data(
+            key=[
+                '',
+                'normal.metric.name.with.normal.length',
+            ],
+            start=0,
+            end=4,
+            data=[[], [], [], []],
+        )
+
+        expectedResult = [
+            TimeSeries('', 0, 4, 1, []),
+            TimeSeries('normal.metRic.name.with.normal.length', 0, 4, 1, []),
+        ]
+        seriesList = functions.toUpperCase({}, seriesList, 10)
+        self.assertEqual(seriesList, expectedResult)
+
+        expectedResult[1].name = 'Normal.metRic.name.with.normal.length'
+        seriesList = functions.toUpperCase({}, seriesList, 0)
+        self.assertEqual(seriesList, expectedResult)
+
+        expectedResult[1].name = 'Normal.metRic.name.with.normal.lengtH'
+        seriesList = functions.toUpperCase({}, seriesList, -1)
+        self.assertEqual(seriesList, expectedResult)
+
+        expectedResult[1].name = 'Normal.metRic.name.with.normal.lengtH'
+        seriesList = functions.toUpperCase({}, seriesList, 1000)
+        self.assertEqual(seriesList, expectedResult)
+
+    def test_upper_with_multiple_positions(self):
+        seriesList = self._gen_series_list_with_data(
+            key=[
+                '',
+                'normal.metric.name.with.normal.length',
+            ],
+            start=0,
+            end=4,
+            data=[[], [], [], []],
+        )
+
+        expectedResult = [
+            TimeSeries('', 0, 4, 1, []),
+            TimeSeries('Normal.metric.nAme.with.normal.lenGtH', 0, 4, 1, []),
+        ]
+        seriesList = functions.toUpperCase({}, seriesList, 0, 15, 100, -3, -1, -1000)
+        self.assertEqual(seriesList, expectedResult)
+
+    def test_lower_without_positions(self):
+        seriesList = self._gen_series_list_with_data(
+            key=['', 'A', 'NORMAL.METRIC.NAME.WITH.NORMAL.LENGTH', '!@#$%^&*()_+'],
+            start=0,
+            end=4,
+            data=[[], [], [], []],
+        )
+        expectedResult = [
+            TimeSeries('', 0, 4, 1, []),
+            TimeSeries('a', 0, 4, 1, []),
+            TimeSeries('normal.metric.name.with.normal.length', 0, 4, 1, []),
+            TimeSeries('!@#$%^&*()_+', 0, 4, 1, []),
+        ]
+        result = functions.toLowerCase({}, seriesList)
+        self.assertEqual(result, expectedResult)
+
+    def test_lower_with_one_position(self):
+        seriesList = self._gen_series_list_with_data(
+            key=[
+                '',
+                'NORMAL.METRIC.NAME.WITH.NORMAL.LENGTH',
+            ],
+            start=0,
+            end=4,
+            data=[[], [], [], []],
+        )
+
+        expectedResult = [
+            TimeSeries('', 0, 4, 1, []),
+            TimeSeries('NORMAL.METrIC.NAME.WITH.NORMAL.LENGTH', 0, 4, 1, []),
+        ]
+        seriesList = functions.toLowerCase({}, seriesList, 10)
+        self.assertEqual(seriesList, expectedResult)
+
+        expectedResult[1].name = 'nORMAL.METrIC.NAME.WITH.NORMAL.LENGTH'
+        seriesList = functions.toLowerCase({}, seriesList, 0)
+        self.assertEqual(seriesList, expectedResult)
+
+        expectedResult[1].name = 'nORMAL.METrIC.NAME.WITH.NORMAL.LENGTh'
+        seriesList = functions.toLowerCase({}, seriesList, -1)
+        self.assertEqual(seriesList, expectedResult)
+
+        expectedResult[1].name = 'nORMAL.METrIC.NAME.WITH.NORMAL.LENGTh'
+        seriesList = functions.toLowerCase({}, seriesList, 1000)
+        self.assertEqual(seriesList, expectedResult)
+
+    def test_lower_with_multiple_positions(self):
+        seriesList = self._gen_series_list_with_data(
+            key=[
+                '',
+                'NORMAL.METRIC.NAME.WITH.NORMAL.LENGTH',
+            ],
+            start=0,
+            end=4,
+            data=[[], [], [], []],
+        )
+
+        expectedResult = [
+            TimeSeries('', 0, 4, 1, []),
+            TimeSeries('nORMAL.METRIC.NaME.WITH.NORMAL.LENgTh', 0, 4, 1, []),
+        ]
+        seriesList = functions.toLowerCase({}, seriesList, 0, 15, 100, -3, -1, -1000)
+        self.assertEqual(seriesList, expectedResult)
+
     @patch('graphite.render.evaluator.prefetchData', lambda *_: None)
     def test_linearRegression(self):
         seriesList = self._gen_series_list_with_data(
@@ -4395,6 +4527,38 @@ class FunctionsTest(TestCase):
         self.assertEqual(result, expectedResults)
 
     @patch('graphite.render.evaluator.prefetchData', lambda *_: None)
+    def test_applyByNode_Overflow(self):
+        seriesList = self._gen_series_list_with_data(
+            key=['servers.s1.disk.bytes_used', 'servers.s1.disk.bytes_free','servers.s2.disk.bytes_used','servers.s2.disk.bytes_free'],
+            start=0,
+            end=3,
+            data=[[10, 20, 30], [90, 80, 70], [1, 2, 3], [99, 98, 97]]
+        )
+
+        def mock_data_fetcher(reqCtx, path_expression):
+            rv = []
+            for s in seriesList:
+                if s.name == path_expression or fnmatch(s.name, path_expression):
+                    rv.append(s)
+            if rv:
+                return rv
+            raise KeyError('{} not found!'.format(path_expression))
+
+        with patch('graphite.render.evaluator.fetchData', mock_data_fetcher):
+            try:
+                functions.applyByNode(
+                    self._build_requestContext(
+                        startTime=datetime(1970, 1, 1, 0, 0, 0, 0, pytz.timezone(settings.TIME_ZONE)),
+                        endTime=datetime(1970, 1, 1, 0, 9, 0, 0, pytz.timezone(settings.TIME_ZONE))
+                    ),
+                    seriesList, 4,
+                    'divideSeries(%.disk.bytes_used, sumSeries(%.disk.bytes_*))'
+                )
+                self.fail('must raise with InputParameterError')
+            except InputParameterError:
+                pass
+
+    @patch('graphite.render.evaluator.prefetchData', lambda *_: None)
     def test_applyByNode_newName(self):
         seriesList = self._gen_series_list_with_data(
             key=['servers.s1.disk.bytes_used', 'servers.s1.disk.bytes_free','servers.s2.disk.bytes_used','servers.s2.disk.bytes_free'],
@@ -4451,7 +4615,7 @@ class FunctionsTest(TestCase):
             )
 
         with patch('graphite.render.functions.evaluateTarget', mock_evaluateTarget):
-            with self.assertRaisesRegexp(ValueError, '^Invalid parameters \\(Unsupported aggregation function: invalid\\)$'):
+            with self.assertRaisesRegex(ValueError, '^Invalid parameters \\(Unsupported aggregation function: invalid\\)$'):
                 functions.movingWindow(request_context, seriesList, 5, 'invalid')
 
     def test_movingWindow_xFilesFactor(self):
@@ -6295,7 +6459,7 @@ class FunctionsTest(TestCase):
             self.assertEqual(result, [])
 
         with patch('graphite.storage.STORE.tagdb', MockTagDB()):
-            with self.assertRaisesRegexp(ValueError, 'groupByTags\\(\\): no tags specified'):
+            with self.assertRaisesRegex(ValueError, 'groupByTags\\(\\): no tags specified'):
                 functions.groupByTags({}, [], 'sum')
 
             result = functions.groupByTags({}, seriesList, 'sum', 'server')

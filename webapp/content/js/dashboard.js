@@ -163,6 +163,10 @@ function htmlEncode(input) {
   });
 }
 
+function htmlStriped(input) {
+  return htmlEncode(input).replace(/\s/g, '_')
+}
+
 function initDashboard () {
 
   // Populate naming-scheme based datastructures
@@ -1229,7 +1233,7 @@ function selectRelativeTime() {
     fieldLabel: 'Show the past',
     width: 90,
     allowBlank: false,
-    regex: /\d+/,
+    regex: /^\d+$/,
     regexText: 'Please enter a number',
     value: TimeRange.relativeStartQuantity
   });
@@ -1251,7 +1255,7 @@ function selectRelativeTime() {
     fieldLabel: 'Until',
     width: 90,
     allowBlank: true,
-    regex: /\d+/,
+    regex: /^\d+$/,
     regexText: 'Please enter a number',
     value: TimeRange.relativeUntilQuantity
   });
@@ -1291,10 +1295,10 @@ function selectRelativeTime() {
 
   function updateTimeRange() {
     TimeRange.type = 'relative';
-    TimeRange.relativeStartQuantity = quantityField.getValue();
-    TimeRange.relativeStartUnits = unitField.getValue();
-    TimeRange.relativeUntilQuantity = untilQuantityField.getValue();
-    TimeRange.relativeUntilUnits = untilUnitField.getValue();
+    TimeRange.relativeStartQuantity = htmlStriped(quantityField.getValue());
+    TimeRange.relativeStartUnits = htmlStriped(unitField.getValue());
+    TimeRange.relativeUntilQuantity = htmlStriped(untilQuantityField.getValue());
+    TimeRange.relativeUntilUnits = htmlStriped(untilUnitField.getValue());
     win.close();
     timeRangeUpdated();
   }
@@ -1322,7 +1326,8 @@ function selectAbsoluteTime() {
   var startDateField = new Ext.form.DateField({
     fieldLabel: 'Start Date',
     width: 125,
-    value: TimeRange.startDate || ''
+    value: TimeRange.startDate || '',
+    invalidText: 'Not a valid date'
   });
 
   var startTimeField = new Ext.form.TimeField({
@@ -1330,13 +1335,15 @@ function selectAbsoluteTime() {
     width: 125,
     allowBlank: false,
     increment: 30,
-    value: TimeRange.startTime || ''
+    value: TimeRange.startTime || '',
+    invalidText: 'Not a valid time'
   });
 
   var endDateField = new Ext.form.DateField({
     fieldLabel: 'End Date',
     width: 125,
-    value: TimeRange.endDate || ''
+    value: TimeRange.endDate || '',
+    invalidText: 'Not a valid date'
   });
 
   var endTimeField = new Ext.form.TimeField({
@@ -1344,7 +1351,8 @@ function selectAbsoluteTime() {
     width: 125,
     allowBlank: false,
     increment: 30,
-    value: TimeRange.endTime || ''
+    value: TimeRange.endTime || '',
+    invalidText: 'Not a valid time'
   });
 
   var win;
@@ -1867,7 +1875,7 @@ function graphClicked(graphView, graphIndex, element, evt) {
 
   function syncGraphs(thisStore, record, operation) {
     var targets = [];
-    thisStore.each(function (rec) { targets.push(rec.data.target.replace(/'/g, '"')); });
+    thisStore.each(function (rec) { targets.push(rec.data.target); });
     selectedRecord.data.params.target = targets;
     selectedRecord.data.target = Ext.urlEncode({target: targets});
     refreshGraphs();

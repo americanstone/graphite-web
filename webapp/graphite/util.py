@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
 
-import imp
+import importlib
 import io
 import json as _json
 import socket
@@ -59,7 +59,7 @@ def epoch(dt):
   if not dt.tzinfo:
     tb = traceback.extract_stack(None, 2)
     log.warning('epoch() called with non-timezone-aware datetime in %s at %s:%d' % (tb[0][2], tb[0][0], tb[0][1]))
-    return calendar.timegm(make_aware(dt, pytz.timezone(settings.TIME_ZONE)).astimezone(pytz.utc).timetuple())
+    return calendar.timegm(pytz.timezone(settings.TIME_ZONE).localize(dt, is_dst=None).astimezone(pytz.utc).timetuple())
   return calendar.timegm(dt.astimezone(pytz.utc).timetuple())
 
 
@@ -128,14 +128,28 @@ def find_escaped_pattern_fields(pattern_string):
       yield index
 
 
+# Replace special characters "&", "<" and ">" to HTML-safe sequences.
+def htmlEscape(s):
+    s = s.replace("&", "&amp;")  # Must be done first!
+    s = s.replace("<", "&lt;")
+    s = s.replace(">", "&gt;")
+    return s
+
+
+def is_unsafe_str(s):
+    for symbol in '<>':
+        if s.find(symbol) >= 0:
+            return True
+    return False
+
+
 def load_module(module_path, member=None):
   module_name = splitext(basename(module_path))[0]
-  try:  # 'U' is default from Python 3.0 and deprecated since 3.9
-    module_file = open(module_path, 'U')
-  except ValueError:
-    module_file = open(module_path, 'rt')
-  description = ('.py', 'U', imp.PY_SOURCE)
-  module = imp.load_module(module_name, module_file, module_path, description)
+  spec = importlib.util.spec_from_file_location(module_name, module_path)
+  if spec is None:
+    raise IOError(f'file {module_path} not found')
+  module = importlib.util.module_from_spec(spec)
+  spec.loader.exec_module(module)
   if member:
     return getattr(module, member)
   else:

@@ -33,12 +33,12 @@ been met or not.
 Basic Graphite requirements:
 
 * a UNIX-like Operating System
-* Python 2.7 or greater (including experimental Python3 support)
+* Python 3.8 or greater
 * `cairocffi`_
-* `Django`_ 1.8 - 2.2 (for Python3 - 1.11 and newer), 1.11.19 or newer is recommended 
-* `django-tagging`_ 0.4.6 (not `django-taggit` yet)
+* `Django`_ 4.2+
+* `django-tagging`_ 0.4.6 (not `django-taggit`, unfortunately)
 * `pytz`_
-* `scandir`_ (for Python older than 3.5)
+* `pyparsing` 2.3.0+
 * `fontconfig`_ and at least one font package (a system package usually)
 * A WSGI server and web server. Popular choices are:
 
@@ -53,7 +53,7 @@ is part of the Graphite project.
 
 There are also several other dependencies required for additional features:
 
-* Render caching: `memcached`_ and `python-memcache`_
+* Render caching: `memcached`_ and `pymemcache`_
 * LDAP authentication: `python-ldap`_ (for LDAP authentication support in the webapp)
 * AMQP support: `txamqp`_ (version 0.8 is required)
 * RRD support: `python-rrdtool`_
@@ -145,7 +145,7 @@ Initial Configuration
 
 .. toctree::
    :maxdepth: 2
-   
+
    config-database-setup
    config-webapp
    config-local-settings
@@ -190,7 +190,7 @@ Unfortunately, native Graphite on Windows is completely unsupported, but you can
 
 
 .. _Apache: https://projects.apache.org/project.html?httpd-http_server
-.. _cairocffi: https://pythonhosted.org/cairocffi/
+.. _cairocffi: https://pypi.org/project/cairocffi/
 .. _Django: http://www.djangoproject.com/
 .. _django-tagging: http://django-tagging.readthedocs.io/
 .. _Django database install: https://docs.djangoproject.com/en/dev/topics/install/#get-your-database-running
@@ -204,7 +204,7 @@ Unfortunately, native Graphite on Windows is completely unsupported, but you can
 .. _NOT Python 3: https://python3wos.appspot.com/
 .. _pip: https://pip.pypa.io/
 .. _python-ldap: https://www.python-ldap.org/
-.. _python-memcache: https://www.tummy.com/software/python-memcached/
+.. _pymemcache: https://github.com/pinterest/pymemcache
 .. _python-rrdtool: http://oss.oetiker.ch/rrdtool/prog/rrdpython.en.html
 .. _python-sqlite2: https://github.com/ghaering/pysqlite
 .. _pytz: https://pypi.python.org/pypi/pytz/

@@ -9,7 +9,7 @@
 #
 # Set this to a long, random unique string to use as a secret key for this
 # install. This key is used for salting of hashes used in auth tokens,
-# CRSF middleware, cookie storage, etc. This should be set identically among
+# CSRF middleware, cookie storage, etc. This should be set identically among
 # instances if used behind a load balancer.
 #SECRET_KEY = 'UNSAFE_DEFAULT'
 
@@ -78,7 +78,7 @@
 # Starting from 1.11, options are used for both python-memcached and pylibmc.
 #MEMCACHE_OPTIONS = { 'socket_timeout': 0.5 }
 
-# this setting controls the default xFilesFactor used for query-time aggregration
+# this setting controls the default xFilesFactor used for query-time aggregation
 DEFAULT_XFILES_FACTOR = 0
 
 # Set URL_PREFIX when deploying graphite-web to a non-root location
@@ -97,6 +97,10 @@ DEFAULT_XFILES_FACTOR = 0
 
 # Allow UTF-8 metrics' names (can cause performance issues)
 #UTF8_METRICS = False
+
+# Default consolidation function ('sum', 'average', 'avg_zero', 'max', 'min', 'first', 'last')
+# If not set average is used
+#DEFAULT_CONSOLIDATION = 'sum'
 
 #####################################
 # Filesystem Paths #
@@ -331,7 +335,7 @@ DEFAULT_XFILES_FACTOR = 0
 # query port is 7002 and a common scheme is to use 7102 for instance b, 7202
 # for instance c, etc.
 # If you're using consistent hashing, please keep an order of hosts the same as
-# order of DESTINATIONS in your relay - otherways you'll get cache misses.
+# order of DESTINATIONS in your relay - otherwise you'll get cache misses.
 #
 # You *should* use 127.0.0.1 here in most cases.
 #

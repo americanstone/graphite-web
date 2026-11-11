@@ -12,12 +12,19 @@ import pytz
 import mock
 
 
+def make_aware(dt, timezone):
+    if hasattr(timezone, 'localize'):
+        return timezone.localize(dt)
+    else:
+        return dt.replace(tzinfo=timezone)
+
+
 def mockDateTime(year, month, day, hour, minute, second):
     class MockedDateTime(datetime):
         @classmethod
         def now(cls, tzinfo=None):
             if tzinfo:
-                return tzinfo.localize(cls(year, month, day, hour, minute, second))
+                return make_aware(cls(year, month, day, hour, minute, second), tzinfo)
             return cls(year, month, day, hour, minute, second)
 
     return MockedDateTime
@@ -27,87 +34,88 @@ def mockDateTime(year, month, day, hour, minute, second):
 class ATTimeTimezoneTests(TestCase):
     default_tz = timezone.get_current_timezone()
     specified_tz = pytz.timezone("America/Los_Angeles")
-    MOCK_DATE = specified_tz.localize(datetime(2015, 1, 1, 11, 00))
+    MOCK_DATE = make_aware(datetime(2015, 1, 1, 11, 00), specified_tz)
 
     def test_should_return_absolute_time(self):
         time_string = '12:0020150308'
-        expected_time = self.default_tz.localize(datetime.strptime(time_string,'%H:%M%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string,'%H:%M%Y%m%d'), self.default_tz)
         actual_time = parseATTime(time_string)
         self.assertEqual(actual_time, expected_time)
 
     def test_absolute_time_should_respect_tz(self):
         time_string = '12:0020150308'
-        expected_time = self.specified_tz.localize(datetime.strptime(time_string, '%H:%M%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string, '%H:%M%Y%m%d'), self.specified_tz)
         actual_time = parseATTime(time_string, self.specified_tz)
         self.assertEqual(actual_time, expected_time)
 
     def test_should_return_absolute_time_short(self):
         time_string = '9:0020150308'
-        expected_time = self.default_tz.localize(datetime.strptime(time_string,'%H:%M%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string,'%H:%M%Y%m%d'), self.default_tz)
         actual_time = parseATTime(time_string)
         self.assertEqual(actual_time, expected_time)
 
     def test_absolute_time_should_respect_tz_short(self):
         time_string = '9:0020150308'
-        expected_time = self.specified_tz.localize(datetime.strptime(time_string, '%H:%M%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string, '%H:%M%Y%m%d'), self.specified_tz)
         actual_time = parseATTime(time_string, self.specified_tz)
         self.assertEqual(actual_time, expected_time)
 
     def test_absolute_time_YYYYMMDD(self):
         time_string = '20150110'
-        expected_time = self.specified_tz.localize(datetime.strptime(time_string, '%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string, '%Y%m%d'), self.specified_tz)
         actual_time = parseATTime(time_string, self.specified_tz)
         self.assertEqual(actual_time, expected_time)
 
     def test_midnight(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("0:00_20150308", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("0:00_20150308", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("midnight", self.specified_tz)
         self.assertEqual(actual_time, expected_time)
 
     def test_offset_with_tz(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("1:00_20150308", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("1:00_20150308", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("midnight+1h", self.specified_tz)
         self.assertEqual(actual_time, expected_time)
 
     def test_relative_day_with_tz(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("0:00_20150309", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("0:00_20150309", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("midnight_tomorrow", self.specified_tz)
         self.assertEqual(actual_time, expected_time)
 
     def test_relative_day_and_offset_with_tz(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("3:00_20150309", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("3:00_20150309", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("midnight_tomorrow+3h", self.specified_tz)
         self.assertEqual(actual_time, expected_time)
 
     def test_should_return_current_time(self):
-        expected_time = self.default_tz.localize(datetime.strptime("12:00_20150308", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("12:00_20150308", '%H:%M_%Y%m%d'), self.default_tz)
         actual_time = parseATTime("now")
         self.assertEqual(actual_time, expected_time)
 
     def test_now_should_respect_tz(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("12:00_20150308", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("12:00_20150308", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("now", self.specified_tz)
         self.assertEqual(actual_time, expected_time)
 
     def test_relative_time_in_alternate_zone(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("11:00_20150308", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("11:00_20150308", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("-1h", self.specified_tz)
         self.assertEqual(actual_time.hour, expected_time.hour)
 
     def test_should_handle_dst_boundary(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("04:00_20150308", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("04:00_20150308", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("midnight+3h", self.specified_tz)
         self.assertEqual(actual_time, expected_time)
 
     def test_parse_naive_datetime(self):
         time_ref = parseATTime(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50), self.specified_tz)
-        expected = self.specified_tz.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        expected = make_aware(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50), self.specified_tz)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_zone_aware_datetime(self):
-        time_ref = parseATTime(self.specified_tz.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50)), self.specified_tz)
-        expected = self.specified_tz.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        aware_dt = make_aware(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50), self.specified_tz)
+        time_ref = parseATTime(aware_dt, self.specified_tz)
+        expected = make_aware(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50), self.specified_tz)
+        self.assertEqual(time_ref, expected)
 
 
 @mock.patch('graphite.render.attime.datetime', mockDateTime(2015, 1, 1, 11, 0, 0))
@@ -118,11 +126,11 @@ class parseTimeReferenceTest(TestCase):
 
     def test_parse_empty_return_now(self):
         time_ref = parseTimeReference('')
-        self.assertEquals(time_ref, self.MOCK_DATE)
+        self.assertEqual(time_ref, self.MOCK_DATE)
 
     def test_parse_None_return_now(self):
         time_ref = parseTimeReference(None)
-        self.assertEquals(time_ref, self.MOCK_DATE)
+        self.assertEqual(time_ref, self.MOCK_DATE)
 
     def test_parse_random_string_raise_Exception(self):
         with self.assertRaises(Exception):
@@ -130,7 +138,7 @@ class parseTimeReferenceTest(TestCase):
 
     def test_parse_now_return_now(self):
         time_ref = parseTimeReference("now")
-        self.assertEquals(time_ref, self.MOCK_DATE)
+        self.assertEqual(time_ref, self.MOCK_DATE)
 
     def test_parse_colon_raises_ValueError(self):
         with self.assertRaises(ValueError):
@@ -139,92 +147,112 @@ class parseTimeReferenceTest(TestCase):
     def test_parse_naive_datetime(self):
         time_ref = parseTimeReference(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_zone_aware_datetime(self):
         time_ref = parseTimeReference(self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50)))
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_return_hour_of_today(self):
         time_ref = parseTimeReference("8:50")
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_am(self):
         time_ref = parseTimeReference("8:50am")
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_pm(self):
         time_ref = parseTimeReference("8:50pm")
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 20, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_only_am(self):
         time_ref = parseTimeReference("8am")
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_only_pm(self):
         time_ref = parseTimeReference("10pm")
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 22, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
+
+    def test_parse_hour_only_twelve_am_is_midnight(self):
+        time_ref = parseTimeReference("12am")
+        expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 0, 0))
+        self.assertEqual(time_ref, expected)
+
+    def test_parse_hour_only_twelve_pm_is_noon(self):
+        time_ref = parseTimeReference("12pm")
+        expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 12, 0))
+        self.assertEqual(time_ref, expected)
+
+    def test_parse_hour_twelve_am(self):
+        time_ref = parseTimeReference("12:30am")
+        expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 0, 30))
+        self.assertEqual(time_ref, expected)
+
+    def test_parse_hour_twelve_pm(self):
+        time_ref = parseTimeReference("12:30pm")
+        expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 12, 30))
+        self.assertEqual(time_ref, expected)
 
     def test_parse_noon(self):
         time_ref = parseTimeReference("noon")
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 12, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_midnight(self):
         time_ref = parseTimeReference("midnight")
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_teatime(self):
         time_ref = parseTimeReference("teatime")
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 16, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_yesterday(self):
         time_ref = parseTimeReference("yesterday")
         expected = self.zone.localize(datetime(2014, 12, 31, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_today(self):
         time_ref = parseTimeReference("today")
         expected = self.zone.localize(datetime(2015, 1, 1, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_tomorrow(self):
         time_ref = parseTimeReference("tomorrow")
         expected = self.zone.localize(datetime(2015, 1, 2, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MM_slash_DD_slash_YY(self):
         time_ref = parseTimeReference("02/25/15")
         expected = self.zone.localize(datetime(2015, 2, 25, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MM_slash_DD_slash_YYYY(self):
         time_ref = parseTimeReference("02/25/2015")
         expected = self.zone.localize(datetime(2015, 2, 25, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_YYYYMMDD(self):
         time_ref = parseTimeReference("20140606")
         expected = self.zone.localize(datetime(2014, 6, 6, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MonthName_DayOfMonth_onedigits(self):
         time_ref = parseTimeReference("january8")
         expected = self.zone.localize(datetime(2015, 1, 8, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MonthName_DayOfMonth_twodigits(self):
         time_ref = parseTimeReference("january10")
         expected = self.zone.localize(datetime(2015, 1, 10, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MonthName_DayOfMonth_threedigits_raise_ValueError(self):
         with self.assertRaises(ValueError):
@@ -237,7 +265,7 @@ class parseTimeReferenceTest(TestCase):
     def test_parse_monday_return_monday_before_now(self):
         time_ref = parseTimeReference("monday")
         expected = self.zone.localize(datetime(2014, 12, 29, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
 
 @mock.patch('graphite.render.attime.datetime', mockDateTime(2010, 3, 30, 00, 0, 0))
@@ -247,12 +275,12 @@ class parseTimeReferenceTestBug551771(TestCase):
     def test_parse_MM_slash_DD_slash_YY(self):
         time_ref = parseTimeReference("02/23/10")
         expected = self.zone.localize(datetime(2010, 2, 23, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_YYYYMMDD(self):
         time_ref = parseTimeReference("20100223")
         expected = self.zone.localize(datetime(2010, 2, 23, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
 
 class parseTimeOffsetTest(TestCase):
@@ -260,7 +288,7 @@ class parseTimeOffsetTest(TestCase):
     def test_parse_None_returns_empty_timedelta(self):
         time_ref = parseTimeOffset(None)
         expected = timedelta(0)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_integer_raises_TypeError(self):
         with self.assertRaises(TypeError):
@@ -285,72 +313,72 @@ class parseTimeOffsetTest(TestCase):
     def test_parse_minus_only_returns_zero(self):
         time_ref = parseTimeOffset("-")
         expected = timedelta(0)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_plus_only_returns_zero(self):
         time_ref = parseTimeOffset("+")
         expected = timedelta(0)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_ten_days(self):
         time_ref = parseTimeOffset("10days")
         expected = timedelta(10)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_zero_days(self):
         time_ref = parseTimeOffset("0days")
         expected = timedelta(0)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_minus_ten_days(self):
         time_ref = parseTimeOffset("-10days")
         expected = timedelta(-10)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_five_seconds(self):
         time_ref = parseTimeOffset("5seconds")
         expected = timedelta(seconds=5)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_five_minutes(self):
         time_ref = parseTimeOffset("5minutes")
         expected = timedelta(minutes=5)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_five_hours(self):
         time_ref = parseTimeOffset("5hours")
         expected = timedelta(hours=5)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_five_weeks(self):
         time_ref = parseTimeOffset("5weeks")
         expected = timedelta(weeks=5)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_one_month_returns_thirty_days(self):
         time_ref = parseTimeOffset("1month")
         expected = timedelta(30)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_two_months_returns_sixty_days(self):
         time_ref = parseTimeOffset("2months")
         expected = timedelta(60)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_twelve_months_returns_360_days(self):
         time_ref = parseTimeOffset("12months")
         expected = timedelta(360)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_one_year_returns_365_days(self):
         time_ref = parseTimeOffset("1year")
         expected = timedelta(365)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_two_years_returns_730_days(self):
         time_ref = parseTimeOffset("2years")
         expected = timedelta(730)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
 
 class getUnitStringTest(TestCase):
@@ -359,43 +387,43 @@ class getUnitStringTest(TestCase):
         test_cases = ['s', 'se', 'sec', 'second', 'seconds']
         for test_case in test_cases:
             result = getUnitString(test_case)
-            self.assertEquals(result, 'seconds')
+            self.assertEqual(result, 'seconds')
 
     def test_get_minutes(self):
         test_cases = ['min', 'minute', 'minutes']
         for test_case in test_cases:
             result = getUnitString(test_case)
-            self.assertEquals(result, 'minutes')
+            self.assertEqual(result, 'minutes')
 
     def test_get_hours(self):
         test_cases = ['h', 'ho', 'hour', 'hours']
         for test_case in test_cases:
             result = getUnitString(test_case)
-            self.assertEquals(result, 'hours')
+            self.assertEqual(result, 'hours')
 
     def test_get_days(self):
         test_cases = ['d', 'da', 'day', 'days']
         for test_case in test_cases:
             result = getUnitString(test_case)
-            self.assertEquals(result, 'days')
+            self.assertEqual(result, 'days')
 
     def test_get_weeks(self):
         test_cases = ['w', 'we', 'week', 'weeks']
         for test_case in test_cases:
             result = getUnitString(test_case)
-            self.assertEquals(result, 'weeks')
+            self.assertEqual(result, 'weeks')
 
     def test_get_months(self):
         test_cases = ['mon', 'month', 'months']
         for test_case in test_cases:
             result = getUnitString(test_case)
-            self.assertEquals(result, 'months')
+            self.assertEqual(result, 'months')
 
     def test_get_years(self):
         test_cases = ['y', 'ye', 'year', 'years']
         for test_case in test_cases:
             result = getUnitString(test_case)
-            self.assertEquals(result, 'years')
+            self.assertEqual(result, 'years')
 
     def test_m_raises_Exception(self):
         with self.assertRaises(Exception):
@@ -413,17 +441,17 @@ class parseATTimeTestLeapYear(TestCase):
     def test_parse_last_year(self):
         time_ref = parseATTime("-1year")
         expected = self.zone.localize(datetime(2015, 3, 1, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_last_leap_year(self):
         time_ref = parseATTime("-4years")
         expected = self.zone.localize(datetime(2012, 3, 1, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_last_month(self):
         time_ref = parseATTime("-1month")
         expected = self.zone.localize(datetime(2016, 1, 30, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
 
 @mock.patch('graphite.render.attime.datetime',mockDateTime(2013, 2, 28, 00, 0, 0))
@@ -433,17 +461,17 @@ class parseATTimeTestLeapYear2(TestCase):
     def test_parse_last_year(self):
         time_ref = parseATTime("-1year")
         expected = self.zone.localize(datetime(2012, 2, 29, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_last_leap_year(self):
         time_ref = parseATTime("-4years")
         expected = self.zone.localize(datetime(2009, 3, 1, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_last_month(self):
         time_ref = parseATTime("-1month")
         expected = self.zone.localize(datetime(2013, 1, 29, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
 
 class parseATTimeTest(TestCase):
@@ -454,89 +482,90 @@ class parseATTimeTest(TestCase):
     def test_parse_noon_plus_yesterday(self):
         time_ref = parseATTime("noon+yesterday")
         expected = datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day - 1, 12, 00)
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
 
 class parseATTimeTestNow(TestCase):
     default_tz = timezone.get_current_timezone()
     specified_tz = pytz.timezone("America/Los_Angeles")
     now = '11:0020171013'
-    MOCK_DATE = specified_tz.localize(datetime(2015, 1, 1, 11, 00))
+    MOCK_DATE = make_aware(datetime(2015, 1, 1, 11, 00), specified_tz)
 
     def test_should_return_absolute_time(self):
         time_string = '12:0020150308'
-        expected_time = self.default_tz.localize(datetime.strptime(time_string,'%H:%M%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string,'%H:%M%Y%m%d'), self.default_tz)
         actual_time = parseATTime(time_string, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_absolute_time_should_respect_tz(self):
         time_string = '12:0020150308'
-        expected_time = self.specified_tz.localize(datetime.strptime(time_string, '%H:%M%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string, '%H:%M%Y%m%d'), self.specified_tz)
         actual_time = parseATTime(time_string, self.specified_tz, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_should_return_absolute_time_short(self):
         time_string = '9:0020150308'
-        expected_time = self.default_tz.localize(datetime.strptime(time_string,'%H:%M%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string,'%H:%M%Y%m%d'), self.default_tz)
         actual_time = parseATTime(time_string, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_absolute_time_should_respect_tz_short(self):
         time_string = '9:0020150308'
-        expected_time = self.specified_tz.localize(datetime.strptime(time_string, '%H:%M%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string, '%H:%M%Y%m%d'), self.specified_tz)
         actual_time = parseATTime(time_string, self.specified_tz, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_absolute_time_YYYYMMDD(self):
         time_string = '20150110'
-        expected_time = self.specified_tz.localize(datetime.strptime(time_string, '%Y%m%d'))
+        expected_time = make_aware(datetime.strptime(time_string, '%Y%m%d'), self.specified_tz)
         actual_time = parseATTime(time_string, self.specified_tz, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_midnight(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("0:00_20171013", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("0:00_20171013", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("midnight", self.specified_tz, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_offset_with_tz(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("1:00_20171013", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("1:00_20171013", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("midnight+1h", self.specified_tz, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_relative_day_with_tz(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("0:00_20171014", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("0:00_20171014", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("midnight_tomorrow", self.specified_tz, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_relative_day_and_offset_with_tz(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("3:00_20171014", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("3:00_20171014", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("midnight_tomorrow+3h", self.specified_tz, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_should_return_current_time(self):
-        expected_time = self.default_tz.localize(datetime.strptime("11:00_20171013", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("11:00_20171013", '%H:%M_%Y%m%d'), self.default_tz)
         actual_time = parseATTime("now", now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_now_should_respect_tz(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("11:00_20171013", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("11:00_20171013", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("now", self.specified_tz, now=self.now)
         self.assertEqual(actual_time, expected_time)
 
     def test_relative_time_in_alternate_zone(self):
-        expected_time = self.specified_tz.localize(datetime.strptime("10:00_20171013", '%H:%M_%Y%m%d'))
+        expected_time = make_aware(datetime.strptime("10:00_20171013", '%H:%M_%Y%m%d'), self.specified_tz)
         actual_time = parseATTime("-1h", self.specified_tz, now=self.now)
         self.assertEqual(actual_time.hour, expected_time.hour)
 
     def test_parse_naive_datetime(self):
         time_ref = parseATTime(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50), self.specified_tz, now=self.now)
-        expected = self.specified_tz.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        expected = make_aware(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50), self.specified_tz)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_zone_aware_datetime(self):
-        time_ref = parseATTime(self.specified_tz.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50)), self.specified_tz, now=self.now)
-        expected = self.specified_tz.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        aware_dt = make_aware(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50), self.specified_tz)
+        time_ref = parseATTime(aware_dt, self.specified_tz, now=self.now)
+        expected = make_aware(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50), self.specified_tz)
+        self.assertEqual(time_ref, expected)
 
 
 class parseTimeReferenceTestNow(TestCase):
@@ -547,11 +576,11 @@ class parseTimeReferenceTestNow(TestCase):
 
     def test_parse_empty_return_now(self):
         time_ref = parseTimeReference('', now=self.now)
-        self.assertEquals(time_ref, self.MOCK_DATE)
+        self.assertEqual(time_ref, self.MOCK_DATE)
 
     def test_parse_None_return_now(self):
         time_ref = parseTimeReference(None, now=self.now)
-        self.assertEquals(time_ref, self.MOCK_DATE)
+        self.assertEqual(time_ref, self.MOCK_DATE)
 
     def test_parse_random_string_raise_Exception(self):
         with self.assertRaises(Exception):
@@ -559,7 +588,7 @@ class parseTimeReferenceTestNow(TestCase):
 
     def test_parse_now_return_now(self):
         time_ref = parseTimeReference("now", now=self.now)
-        self.assertEquals(time_ref, self.MOCK_DATE)
+        self.assertEqual(time_ref, self.MOCK_DATE)
 
     def test_parse_colon_raises_ValueError(self):
         with self.assertRaises(ValueError):
@@ -568,92 +597,102 @@ class parseTimeReferenceTestNow(TestCase):
     def test_parse_naive_datetime(self):
         time_ref = parseTimeReference(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50), now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_zone_aware_datetime(self):
         time_ref = parseTimeReference(self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50)), now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_return_hour_of_today(self):
         time_ref = parseTimeReference("8:50", now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_am(self):
         time_ref = parseTimeReference("8:50am", now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_pm(self):
         time_ref = parseTimeReference("8:50pm", now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 20, 50))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_only_am(self):
         time_ref = parseTimeReference("8am", now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 8, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_hour_only_pm(self):
         time_ref = parseTimeReference("10pm", now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 22, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
+
+    def test_parse_hour_only_twelve_am_is_midnight(self):
+        time_ref = parseTimeReference("12am", now=self.now)
+        expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 0, 0))
+        self.assertEqual(time_ref, expected)
+
+    def test_parse_hour_only_twelve_pm_is_noon(self):
+        time_ref = parseTimeReference("12pm", now=self.now)
+        expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 12, 0))
+        self.assertEqual(time_ref, expected)
 
     def test_parse_noon(self):
         time_ref = parseTimeReference("noon", now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 12, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_midnight(self):
         time_ref = parseTimeReference("midnight", now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_teatime(self):
         time_ref = parseTimeReference("teatime", now=self.now)
         expected = self.zone.localize(datetime(self.MOCK_DATE.year, self.MOCK_DATE.month, self.MOCK_DATE.day, 16, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_yesterday(self):
         time_ref = parseTimeReference("yesterday", now=self.now)
         expected = self.zone.localize(datetime(2014, 12, 31, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_today(self):
         time_ref = parseTimeReference("today", now=self.now)
         expected = self.zone.localize(datetime(2015, 1, 1, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_tomorrow(self):
         time_ref = parseTimeReference("tomorrow", now=self.now)
         expected = self.zone.localize(datetime(2015, 1, 2, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MM_slash_DD_slash_YY(self):
         time_ref = parseTimeReference("02/25/15", now=self.now)
         expected = self.zone.localize(datetime(2015, 2, 25, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MM_slash_DD_slash_YYYY(self):
         time_ref = parseTimeReference("02/25/2015", now=self.now)
         expected = self.zone.localize(datetime(2015, 2, 25, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_YYYYMMDD(self):
         time_ref = parseTimeReference("20140606", now=self.now)
         expected = self.zone.localize(datetime(2014, 6, 6, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MonthName_DayOfMonth_onedigits(self):
         time_ref = parseTimeReference("january8", now=self.now)
         expected = self.zone.localize(datetime(2015, 1, 8, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MonthName_DayOfMonth_twodigits(self):
         time_ref = parseTimeReference("january10", now=self.now)
         expected = self.zone.localize(datetime(2015, 1, 10, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
 
     def test_parse_MonthName_DayOfMonth_threedigits_raise_ValueError(self):
         with self.assertRaises(ValueError):
@@ -666,4 +705,4 @@ class parseTimeReferenceTestNow(TestCase):
     def test_parse_monday_return_monday_before_now(self):
         time_ref = parseTimeReference("monday", now=self.now)
         expected = self.zone.localize(datetime(2014, 12, 29, 0, 0))
-        self.assertEquals(time_ref, expected)
+        self.assertEqual(time_ref, expected)
